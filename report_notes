@@ -1,2 +1,32 @@
 part 1: proofs are easy
+
 2.1 -> add parentheses in the test
+
+2.2 : on calcule le type de arg et on s'assure qu'il est bien de la forme ... => a où a est le type qu'on veut obtenir
+puis en notant x => y le type de l'arg, il reste à prouver x
+deux preuves possibles
+Please enter the formula to prove:
+(A => B) => A => B
+Let's prove it.
+ |- ((A => B) => (A => B))
+? intro x
+x : (A => B) |- (A => B)
+? intro y
+y : A , x : (A => B) |- B
+? elim x
+y : A , x : (A => B) |- A
+? exact y
+done.
+Proof term is
+(fun (x : (A => B)) -> (fun (y : A) -> (x y)))
+ou
+Please enter the formula to prove:
+(A => B) => A => B
+Let's prove it.
+ |- ((A => B) => (A => B))
+? intro x
+x : (A => B) |- (A => B)
+? exact x
+done.
+Proof term is
+(fun (x : (A => B)) -> x)

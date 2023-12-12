@@ -415,3 +415,71 @@ let string_of_ctx c = String.concat " , " (List.map (function (s, t) -> s ^ " : 
 let () =
   let a = TVar "A" and b = TVar "B" in
   assert (string_of_ctx [("x", Imp(a, b)) ; ("y", And (a, b)) ; ("Z", True)] = "x : (A => B) , y : (A /\\ B) , Z : T")
+
+type sequent = context * ty
+
+let string_of_seq (c, t) = (string_of_ctx c) ^ " |- " ^ (string_of_ty t)
+
+(* test *)
+let () =
+  let a = TVar "A" and b = TVar "B" in
+  assert (string_of_seq ([("x", Imp(a, b)) ; ("y", a)], b) = "x : (A => B) , y : A |- B")
+
+
+(**************************************************)
+(* Interactive prover code copied from proving.ml *)
+(**************************************************)
+
+(* returns true if and only if env contains the type t *)
+let type_in_context t env = List.mem t (List.map (function (_, t1) -> t1) env)
+
+let rec prove env a =
+  print_endline (string_of_seq (env,a));
+  print_string "? "; flush_all ();
+  let error e = print_endline e; prove env a in
+  let cmd, arg =
+    let cmd = input_line stdin in
+    let n = try String.index cmd ' ' with Not_found -> String.length cmd in
+    let c = String.sub cmd 0 n in
+    let a = String.sub cmd n (String.length cmd - n) in
+    let a = String.trim a in
+    c, a
+  in
+  match cmd with
+  | "intro" ->
+     (
+       match a with
+       | Imp (a, b) ->
+          if arg = "" then error "Please provide an argument for intro." else
+            let x = arg in
+            let t = prove ((x,a)::env) b in
+            Abs (x, a, t)
+       | _ ->
+          error "Don't know how to introduce this."
+     )
+  | "exact" ->
+     let t = tm_of_string arg in
+     if infer_type env t <> a then error "Not the right type."
+     else t
+  | "elim" -> (try (let arg_type = List.assoc arg env in
+      match arg_type with
+      | Imp (x, y) -> 
+        if y <> a then error (arg ^ " is not of type ... => " ^ (string_of_ty a)) else
+          let t = prove env x in
+          App (Var arg, t)
+      | _ -> error (arg ^ " is not an implication")
+      ) with e -> match e with _ -> error (arg ^ " is not in context"))
+  | cmd -> error ("Unknown command: " ^ cmd)
+         
+let () =
+  print_endline "Please enter the formula to prove:";
+  let a = input_line stdin in
+  let a = ty_of_string a in
+  print_endline "Let's prove it.";
+  let t = prove [] a in
+  print_endline "done.";
+  print_endline "Proof term is";
+  print_endline (string_of_tm t);
+  print_string  "Typechecking... "; flush_all ();
+  assert (infer_type [] t = a);
+  print_endline "ok."
