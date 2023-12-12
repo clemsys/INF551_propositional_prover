@@ -379,34 +379,35 @@ let tm_of_string t = tm_of_tk (lexer (Stream.of_string t))
 
 (* test for the parsing of types *)
 let () =
-  let l = [ "A => B"; "A /\\ B"; "T"; "A \\/ B"; "_"; "not A" ] in
-  List.iter
-    (fun s ->
-      Printf.printf "the parsing of %S is %s\n%!" s
-        (string_of_ty (ty_of_string s)))
-    l
+  let l =
+    [
+      ("A => B", Imp (TVar "A", TVar "B"));
+      ("A /\\ B", And (TVar "A", TVar "B"));
+      ("T", True);
+      ("A \\/ B", Or (TVar "A", TVar "B"));
+      ("_", False);
+      ("not A", Imp (TVar "A", False));
+    ]
+  in
+  List.iter (fun (s, expected) -> assert (ty_of_string s = expected)) l
 
 (* test for the parsing of terms *)
 let () =
   let l =
     [
-      "t u";
-      "fun (x : A) -> t";
-      "(t , u)";
-      "fst(t)";
-      "snd(t)";
-      "()";
-      "case t of x -> u | y -> v";
-      "left(t,B)";
-      "right(A,t)";
-      "absurd(t,A)";
+      ("t u", App (Var "t", Var "u"));
+      ("fun (x : A) -> t", Abs ("x", TVar "A", Var "t"));
+      ("(t , u)", Pair (Var "t", Var "u"));
+      ("fst(t)", Fst (Var "t"));
+      ("snd(t)", Snd (Var "t"));
+      ("()", Unit);
+      ("case t of x -> u | y -> v", Case (Var "t", "x", Var "u", "y", Var "v"));
+      ("left(t,B)", Left (Var "t", TVar "B"));
+      ("right(A,t)", Right (TVar "A", Var "t"));
+      ("absurd(t,A)", Absurd (Var "t", TVar "A"));
     ]
   in
-  List.iter
-    (fun s ->
-      Printf.printf "the parsing of %S is %s\n%!" s
-        (string_of_tm (tm_of_string s)))
-    l
+  List.iter (fun (s, expected) -> assert (tm_of_string s = expected)) l
 
 (* string representation of contexts *)
 let string_of_ctx c =
@@ -486,6 +487,10 @@ let rec prove env a =
             else
               let t = prove env x in
               App (Var arg, t)
+        | Or (x, y) ->
+            let left_proof = prove ((arg, x) :: env) a in
+            let right_proof = prove ((arg, y) :: env) a in
+            Case (Var arg, arg, left_proof, arg, right_proof)
         | _ -> error (arg ^ " is not an implication")
       with _ -> error (arg ^ " is not in context"))
   | "cut" -> (

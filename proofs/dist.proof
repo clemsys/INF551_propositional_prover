@@ -1,0 +1,17 @@
+(A /\ (B \/ C)) => (A /\ B) \/ (A /\ C)
+intro x
+cut A
+cut B \/ C
+intro y
+intro z
+elim y
+left
+intro
+exact z
+exact y
+right
+intro
+exact z
+exact y
+snd x
+fst x
