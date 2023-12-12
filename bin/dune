@@ -1,0 +1,9 @@
+(executable
+ (public_name TD4)
+ (name prover)
+ (libraries camlp-streams))
+
+(env
+ (dev
+  (flags
+   (:standard -w -34 -w -32))))
