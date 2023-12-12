@@ -14,6 +14,7 @@ type ty =
   | True
   | Or of ty * ty
   | False
+  | Nat
 
 (** lambda-terms a la Church *)
 type tm =
@@ -28,6 +29,9 @@ type tm =
   | Right of ty * tm
   | Case of tm * var * tm * var * tm
   | Absurd of tm * ty
+  | Zero
+  | Suc of tm
+  | Rec of tm * tm * var * var * tm
 
 (* Question 1.3 *)
 let rec string_of_ty = function
@@ -37,6 +41,7 @@ let rec string_of_ty = function
   | True -> "T"
   | Or (s, u) -> "(" ^ string_of_ty s ^ " \\/ " ^ string_of_ty u ^ ")"
   | False -> "_"
+  | Nat -> "Nat"
 
 let () =
   let a = TVar "A" in
@@ -60,6 +65,10 @@ let rec string_of_tm = function
       "(case " ^ string_of_tm s ^ " of " ^ x ^ " -> " ^ string_of_tm u ^ " | "
       ^ y ^ " -> " ^ string_of_tm v ^ ")"
   | Absurd (s, t) -> "absurd(" ^ string_of_tm s ^ "," ^ string_of_ty t ^ ")"
+  | Zero -> "Z"
+  | Suc n -> "suc(" ^ string_of_tm n ^ ")"
+  | Rec (t, u, x, y, v) ->
+      "rec(" ^ string_of_tm t ^ string_of_tm u ^ x ^ y ^ string_of_tm v ^ ")"
 
 let () =
   let a = TVar "A" in
@@ -99,6 +108,12 @@ let rec infer_type gamma = function
           u_type
       | _ -> raise Type_error)
   | Absurd (_, t) -> t
+  | Zero -> Nat
+  | Suc _ -> Nat
+  | Rec (t, u, x, y, v) ->
+      let t_type = infer_type gamma t and u_type = infer_type gamma u in
+      let v_type = infer_type ((x, Nat) :: (y, u_type) :: gamma) v in
+      if not (t_type = Nat && u_type = v_type) then raise Type_error else v_type
 
 and check_type gamma t t_type =
   if infer_type gamma t = t_type then () else raise Type_error
@@ -260,6 +275,7 @@ let lexer =
       "|";
       "absurd";
       "_";
+      "Nat";
     ]
 
 let ty_of_tk s =
@@ -285,6 +301,7 @@ let ty_of_tk s =
     | Genlex.Kwd "not" ->
         let a = base () in
         Imp (a, False)
+    | Genlex.Kwd "Nat" -> Nat
     | _ -> raise Parse_error
   in
   ty ()
