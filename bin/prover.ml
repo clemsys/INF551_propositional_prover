@@ -513,6 +513,14 @@ let rec prove env a =
             else Snd (Var arg)
         | _ -> error (arg ^ " is not a conjuction")
       with _ -> error (arg ^ " is not in context"))
+  | "left" -> (
+      match a with
+      | Or (x, y) -> Left (prove env x, y)
+      | _ -> error (string_of_ty a ^ " is not a disjunction"))
+  | "right" -> (
+      match a with
+      | Or (x, y) -> Right (x, prove env y)
+      | _ -> error (string_of_ty a ^ " is not a disjunction"))
   | cmd -> error ("Unknown command: " ^ cmd)
 
 let () =
