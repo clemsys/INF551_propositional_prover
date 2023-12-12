@@ -435,6 +435,9 @@ let () =
 (* Interactive prover code copied from proving.ml *)
 (**************************************************)
 
+let log_filename = if Array.length Sys.argv > 1 then Sys.argv.(1) else "k.proof"
+let log_channel = open_out log_filename
+
 (* returns true if and only if env contains the type t *)
 let type_in_context t env = List.mem t (List.map (function _, t1 -> t1) env)
 
@@ -448,6 +451,7 @@ let rec prove env a =
   in
   let cmd, arg =
     let cmd = input_line stdin in
+    output_string log_channel (cmd ^ "\n");
     let n = try String.index cmd ' ' with Not_found -> String.length cmd in
     let c = String.sub cmd 0 n in
     let a = String.sub cmd n (String.length cmd - n) in
@@ -484,6 +488,7 @@ let rec prove env a =
 let () =
   print_endline "Please enter the formula to prove:";
   let a = input_line stdin in
+  output_string log_channel (a ^ "\n");
   let a = ty_of_string a in
   print_endline "Let's prove it.";
   let t = prove [] a in
@@ -493,4 +498,5 @@ let () =
   print_string "Typechecking... ";
   flush_all ();
   assert (infer_type [] t = a);
-  print_endline "ok."
+  print_endline "ok.";
+  print_endline ("proof saved in " ^ log_filename)

@@ -30,3 +30,6 @@ x : (A => B) |- (A => B)
 done.
 Proof term is
 (fun (x : (A => B)) -> x)
+
+2.5
+cat proofs/k.proof | dune exec TD4  # commande pour vérifier une preuve
