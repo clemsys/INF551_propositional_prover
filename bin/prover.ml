@@ -467,6 +467,10 @@ let rec prove env a =
             let x = arg in
             let t = prove ((x, a) :: env) b in
             Abs (x, a, t)
+      | And (a, b) ->
+          let proof_a = prove env a in
+          let proof_b = prove env b in
+          Pair (proof_a, proof_b)
       | _ -> error "Don't know how to introduce this.")
   | "exact" ->
       let t = tm_of_string arg in
