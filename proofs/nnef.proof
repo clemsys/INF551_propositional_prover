@@ -1,0 +1,6 @@
+not (not _) => _
+intro x
+cut _ => _
+exact x
+intro y
+exact y

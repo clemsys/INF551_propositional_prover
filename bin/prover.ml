@@ -491,6 +491,7 @@ let rec prove env a =
             let left_proof = prove ((arg, x) :: env) a in
             let right_proof = prove ((arg, y) :: env) a in
             Case (Var arg, arg, left_proof, arg, right_proof)
+        | False -> Absurd (Var arg, a)
         | _ -> error (arg ^ " is not an implication")
       with _ -> error (arg ^ " is not in context"))
   | "cut" -> (

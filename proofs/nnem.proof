@@ -1,0 +1,14 @@
+not (not (A \/ not A))
+intro x
+cut A \/ (A => _)
+intro y
+elim x
+exact y
+right
+intro y
+cut A \/ (A => _)
+intro z
+elim x
+exact z
+left
+exact y

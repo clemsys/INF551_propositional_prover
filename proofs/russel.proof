@@ -1,0 +1,18 @@
+(A => not A) => (not A => A) => _
+intro x
+intro y
+cut A => _
+intro z
+cut A
+intro t
+elim z
+exact t
+elim y
+exact z
+intro z
+cut A => _
+intro t
+elim t
+exact z
+elim x
+exact z
