@@ -471,6 +471,7 @@ let rec prove env a =
           let proof_a = prove env a in
           let proof_b = prove env b in
           Pair (proof_a, proof_b)
+      | True -> Unit
       | _ -> error "Don't know how to introduce this.")
   | "exact" ->
       let t = tm_of_string arg in
