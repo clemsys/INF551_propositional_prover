@@ -486,7 +486,7 @@ let rec prove env a =
               let t = prove env x in
               App (Var arg, t)
         | _ -> error (arg ^ " is not an implication")
-      with e -> ( match e with _ -> error (arg ^ " is not in context")))
+      with _ -> error (arg ^ " is not in context"))
   | "cut" -> (
       try
         let lemma = ty_of_string arg in
@@ -494,6 +494,24 @@ let rec prove env a =
         let lemma_proof = prove env lemma in
         App (global_proof, lemma_proof)
       with _ -> error ("could not parse argument " ^ arg))
+  | "fst" -> (
+      try
+        let arg_type = List.assoc arg env in
+        match arg_type with
+        | And (x, _) ->
+            if x <> a then error (arg ^ " is not of type " ^ string_of_ty x)
+            else Fst (Var arg)
+        | _ -> error (arg ^ " is not a conjuction")
+      with _ -> error (arg ^ " is not in context"))
+  | "snd" -> (
+      try
+        let arg_type = List.assoc arg env in
+        match arg_type with
+        | And (_, x) ->
+            if x <> a then error (arg ^ " is not of type " ^ string_of_ty x)
+            else Snd (Var arg)
+        | _ -> error (arg ^ " is not a conjuction")
+      with _ -> error (arg ^ " is not in context"))
   | cmd -> error ("Unknown command: " ^ cmd)
 
 let () =
