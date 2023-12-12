@@ -483,6 +483,13 @@ let rec prove env a =
               App (Var arg, t)
         | _ -> error (arg ^ " is not an implication")
       with e -> ( match e with _ -> error (arg ^ " is not in context")))
+  | "cut" -> (
+      try
+        let lemma = ty_of_string arg in
+        let global_proof = prove env (Imp (lemma, a)) in
+        let lemma_proof = prove env lemma in
+        App (global_proof, lemma_proof)
+      with _ -> error ("could not parse argument " ^ arg))
   | cmd -> error ("Unknown command: " ^ cmd)
 
 let () =

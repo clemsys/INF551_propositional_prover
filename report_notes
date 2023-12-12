@@ -33,3 +33,10 @@ Proof term is
 
 2.5
 cat proofs/k.proof | dune exec TD4  # commande pour vérifier une preuve
+
+2.6
+il faut parse l'argument
+garder une liste courante des lemmes à prouver et les amener à la fin
+on veut prouver G |- A
+on introduit le lemme B : G |- B => A : la preuve globale est donc une fonction
+notre preuve est donc App (global_proof, lemma_proof) : on prend comme argument lemma_proof dans la fonction ci-dessus, c'est une substitution
