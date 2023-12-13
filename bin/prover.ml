@@ -31,7 +31,7 @@ type tm =
   | Absurd of tm * ty
   | Zero
   | Suc of tm
-  | Rec of tm * tm * var * var * tm
+  | Rec of tm * tm * tm
 
 (* Question 1.3 *)
 let rec string_of_ty = function
@@ -67,8 +67,9 @@ let rec string_of_tm = function
   | Absurd (s, t) -> "absurd(" ^ string_of_tm s ^ "," ^ string_of_ty t ^ ")"
   | Zero -> "Z"
   | Suc n -> "suc(" ^ string_of_tm n ^ ")"
-  | Rec (t, u, x, y, v) ->
-      "rec(" ^ string_of_tm t ^ string_of_tm u ^ x ^ y ^ string_of_tm v ^ ")"
+  | Rec (t, u, f) ->
+      "rec(" ^ string_of_tm t ^ "," ^ string_of_tm u ^ "," ^ string_of_tm f
+      ^ ")"
 
 let () =
   let a = TVar "A" in
@@ -109,11 +110,15 @@ let rec infer_type gamma = function
       | _ -> raise Type_error)
   | Absurd (_, t) -> t
   | Zero -> Nat
-  | Suc _ -> Nat
-  | Rec (t, u, x, y, v) ->
-      let t_type = infer_type gamma t and u_type = infer_type gamma u in
-      let v_type = infer_type ((x, Nat) :: (y, u_type) :: gamma) v in
-      if not (t_type = Nat && u_type = v_type) then raise Type_error else v_type
+  | Suc s -> if infer_type gamma s = Nat then Nat else raise Type_error
+  | Rec (t, u, f) -> (
+      match f with
+      | Abs (xy, And (Nat, a), v) ->
+          let t_type = infer_type gamma t and u_type = infer_type gamma u in
+          let v_type = infer_type ((xy, And (Nat, a)) :: gamma) v in
+          if not (t_type = Nat && u_type = v_type) then raise Type_error
+          else v_type
+      | _ -> raise Type_error)
 
 and check_type gamma t t_type =
   if infer_type gamma t = t_type then () else raise Type_error
@@ -490,6 +495,7 @@ let rec prove env a =
           let proof_b = prove env b in
           Pair (proof_a, proof_b)
       | True -> Unit
+      | Nat -> ( match arg with "" -> Zero | _ -> Suc (Var arg))
       | _ -> error "Don't know how to introduce this.")
   | "exact" ->
       let t = tm_of_string arg in
@@ -509,6 +515,10 @@ let rec prove env a =
             let right_proof = prove ((arg, y) :: env) a in
             Case (Var arg, arg, left_proof, arg, right_proof)
         | False -> Absurd (Var arg, a)
+        | Nat ->
+            let init_proof = prove env a in
+            let hered_proof = prove env a in
+            Rec (Var arg, init_proof, hered_proof)
         | _ -> error (arg ^ " is not an implication")
       with _ -> error (arg ^ " is not in context"))
   | "cut" -> (
