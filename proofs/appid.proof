@@ -1,0 +1,8 @@
+((A => A) => B) => B
+intro x
+cut A => A
+intro y
+elim x
+exact y
+intro y
+exact y
