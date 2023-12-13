@@ -1,6 +1,6 @@
-Nat => Nat => Nat
-intro m
+Nat => Nat
 intro n
-rec m
-elim m
+elim n
+intro zero
+intro m
 exact n

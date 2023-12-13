@@ -40,3 +40,6 @@ garder une liste courante des lemmes à prouver et les amener à la fin
 on veut prouver G |- A
 on introduit le lemme B : G |- B => A : la preuve globale est donc une fonction
 notre preuve est donc App (global_proof, lemma_proof) : on prend comme argument lemma_proof dans la fonction ci-dessus, c'est une substitution
+
+5.4
+pas sûr pour certains cas (when y=v) dans has_fv et subst, 8.1.2 du cours, on ne renomme que quand c'est nécessaire

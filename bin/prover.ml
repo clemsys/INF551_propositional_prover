@@ -65,7 +65,7 @@ let rec string_of_tm = function
       "(case " ^ string_of_tm s ^ " of " ^ x ^ " -> " ^ string_of_tm u ^ " | "
       ^ y ^ " -> " ^ string_of_tm v ^ ")"
   | Absurd (s, t) -> "absurd(" ^ string_of_tm s ^ "," ^ string_of_ty t ^ ")"
-  | Zero -> "Z"
+  | Zero -> "Zero"
   | Suc n -> "suc(" ^ string_of_tm n ^ ")"
   | Rec (t, u, f) ->
       "rec(" ^ string_of_tm t ^ "," ^ string_of_tm u ^ "," ^ string_of_tm f
@@ -113,9 +113,9 @@ let rec infer_type gamma = function
   | Suc s -> if infer_type gamma s = Nat then Nat else raise Type_error
   | Rec (t, u, f) -> (
       match f with
-      | Abs (xy, And (Nat, a), v) ->
+      | Abs (y, a, v) ->
           let t_type = infer_type gamma t and u_type = infer_type gamma u in
-          let v_type = infer_type ((xy, And (Nat, a)) :: gamma) v in
+          let v_type = infer_type ((y, a) :: gamma) v in
           if not (t_type = Nat && u_type = v_type) then raise Type_error
           else v_type
       | _ -> raise Type_error)
@@ -495,7 +495,11 @@ let rec prove env a =
           let proof_b = prove env b in
           Pair (proof_a, proof_b)
       | True -> Unit
-      | Nat -> ( match arg with "" -> Zero | _ -> Suc (Var arg))
+      | Nat -> (
+          match arg with
+          | "zero" -> Zero
+          | "suc" -> Suc (prove env Nat)
+          | _ -> error "wrong argument")
       | _ -> error "Don't know how to introduce this.")
   | "exact" ->
       let t = tm_of_string arg in
@@ -516,8 +520,11 @@ let rec prove env a =
             Case (Var arg, arg, left_proof, arg, right_proof)
         | False -> Absurd (Var arg, a)
         | Nat ->
+            print_endline
+              ("Initialization: value of function for " ^ arg ^ " = Zero");
             let init_proof = prove env a in
-            let hered_proof = prove env a in
+            print_endline ("Heredity: function for suc " ^ arg);
+            let hered_proof = prove env (Imp (a, a)) in
             Rec (Var arg, init_proof, hered_proof)
         | _ -> error (arg ^ " is not an implication")
       with _ -> error (arg ^ " is not in context"))
