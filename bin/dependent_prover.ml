@@ -116,3 +116,7 @@ let rec conv env e f =
         (Pi (y, subst x (Var y) a, subst x (Var y) b))
         (Pi (y, subst x' (Var y) a', subst x' (Var y) b'))
   | _, _ -> false
+
+let conv env e f =
+  let ne = normalize env e and nf = normalize env f in
+  conv env ne nf
