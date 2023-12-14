@@ -96,3 +96,23 @@ let rec red env = function
 
 let rec normalize env t =
   match red env t with None -> t | Some s -> normalize env s
+
+let rec conv env e f =
+  match (e, f) with
+  | Type, Type -> true
+  | Var v, Var w -> v = w
+  | App (f, g), App (f', g') -> conv env f f' && conv env g g'
+  | Abs (x, a, t), Abs (x', a', t') when x = x' ->
+      conv env a a' && conv env t t'
+  | Abs (x, a, t), Abs (x', a', t') ->
+      let y = fresh_var () in
+      conv env
+        (Abs (y, subst x (Var y) a, subst x (Var y) t))
+        (Abs (y, subst x' (Var y) a', subst x' (Var y) t'))
+  | Pi (x, a, b), Pi (x', a', b') when x = x' -> conv env a a' && conv env b b'
+  | Pi (x, a, b), Pi (x', a', b') ->
+      let y = fresh_var () in
+      conv env
+        (Pi (y, subst x (Var y) a, subst x (Var y) b))
+        (Pi (y, subst x' (Var y) a', subst x' (Var y) b'))
+  | _, _ -> false
