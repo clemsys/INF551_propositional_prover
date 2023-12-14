@@ -83,45 +83,45 @@ type context = (string * ty) list
 exception Type_error
 
 (* Questions 1.4 and 1.5 *)
-let rec infer_type gamma = function
-  | Var x -> ( try List.assoc x gamma with Not_found -> raise Type_error)
-  | Abs (x, a, t) -> Imp (a, infer_type ((x, a) :: gamma) t)
+let rec infer_type env = function
+  | Var x -> ( try List.assoc x env with Not_found -> raise Type_error)
+  | Abs (x, a, t) -> Imp (a, infer_type ((x, a) :: env) t)
   | App (t, u) -> (
-      match infer_type gamma t with
+      match infer_type env t with
       | Imp (a, b) ->
-          if infer_type gamma u <> a then raise Type_error;
+          if infer_type env u <> a then raise Type_error;
           b
       | _ -> raise Type_error)
-  | Pair (s, u) -> And (infer_type gamma s, infer_type gamma u)
+  | Pair (s, u) -> And (infer_type env s, infer_type env u)
   | Fst t -> (
-      match infer_type gamma t with And (s, _) -> s | _ -> raise Type_error)
+      match infer_type env t with And (s, _) -> s | _ -> raise Type_error)
   | Snd t -> (
-      match infer_type gamma t with And (_, u) -> u | _ -> raise Type_error)
+      match infer_type env t with And (_, u) -> u | _ -> raise Type_error)
   | Unit -> True
-  | Left (s, t) -> Or (infer_type gamma s, t)
-  | Right (t, s) -> Or (t, infer_type gamma s)
+  | Left (s, t) -> Or (infer_type env s, t)
+  | Right (t, s) -> Or (t, infer_type env s)
   | Case (s, x, u, y, v) -> (
-      match infer_type gamma s with
+      match infer_type env s with
       | Or (a, b) ->
-          let u_type = infer_type ((x, a) :: gamma) u
-          and v_type = infer_type ((y, b) :: gamma) v in
+          let u_type = infer_type ((x, a) :: env) u
+          and v_type = infer_type ((y, b) :: env) v in
           if u_type <> v_type then raise Type_error;
           u_type
       | _ -> raise Type_error)
   | Absurd (_, t) -> t
   | Zero -> Nat
-  | Suc s -> if infer_type gamma s = Nat then Nat else raise Type_error
+  | Suc s -> if infer_type env s = Nat then Nat else raise Type_error
   | Rec (t, u, f) -> (
       match f with
       | Abs (y, a, v) ->
-          let t_type = infer_type gamma t and u_type = infer_type gamma u in
-          let v_type = infer_type ((y, a) :: gamma) v in
+          let t_type = infer_type env t and u_type = infer_type env u in
+          let v_type = infer_type ((y, a) :: env) v in
           if not (t_type = Nat && u_type = v_type) then raise Type_error
           else v_type
       | _ -> raise Type_error)
 
-and check_type gamma t t_type =
-  if infer_type gamma t = t_type then () else raise Type_error
+and check_type env t t_type =
+  if infer_type env t = t_type then () else raise Type_error
 
 (* various tests *)
 let () =
