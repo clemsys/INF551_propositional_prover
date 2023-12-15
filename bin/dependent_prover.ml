@@ -27,9 +27,11 @@ let rec to_string = function
   | Ind (p, z, s, n) ->
       "Ind" ^ to_string p ^ " " ^ to_string z ^ " " ^ to_string s ^ " "
       ^ to_string n ^ ")"
-  | Eq (_, _) -> assert false
-  | Refl _ -> assert false
-  | J (_, _, _, _, _) -> assert false
+  | Eq (t, u) -> "(Eq " ^ to_string t ^ " " ^ to_string u ^ ")"
+  | Refl t -> "(Refl " ^ to_string t ^ ")"
+  | J (p, r, x, y, e) ->
+      "(J " ^ to_string p ^ " " ^ to_string r ^ " " ^ to_string x ^ " "
+      ^ to_string y ^ " " ^ to_string e ^ ")"
 
 let fresh_var_counter = ref 0
 
@@ -53,9 +55,10 @@ let rec has_fv x = function
   | Z -> false
   | S n -> has_fv x n
   | Ind (p, z, s, n) -> has_fv x p || has_fv x z || has_fv x s || has_fv x n
-  | Eq (_, _) -> assert false
-  | Refl _ -> assert false
-  | J (_, _, _, _, _) -> assert false
+  | Eq (t, u) -> has_fv x t || has_fv x u
+  | Refl t -> has_fv x t
+  | J (p, r, z, y, e) ->
+      has_fv x p || has_fv x r || has_fv x z || has_fv x y || has_fv x e
 
 (* substitute x by u in e *)
 let rec subst x u = function
@@ -75,9 +78,10 @@ let rec subst x u = function
   | Z -> Z
   | S n -> S (subst x u n)
   | Ind (p, i, h, n) -> Ind (subst x u p, subst x u i, subst x u h, subst x u n)
-  | Eq (_, _) -> assert false
-  | Refl _ -> assert false
-  | J (_, _, _, _, _) -> assert false
+  | Eq (t, s) -> Eq (subst x u t, subst x u s)
+  | Refl t -> Refl (subst x u t)
+  | J (p, r, z, y, e) ->
+      J (subst x u p, subst x u r, subst x u z, subst x u y, subst x u e)
 
 type context = (var * (expr * expr option)) list
 
@@ -138,10 +142,34 @@ let rec red env = function
           and z = match rz with Some z -> z | _ -> z
           and s = match rs with Some s -> s | _ -> s
           and n = match rn with Some n -> n | _ -> n in
-          red env (Ind (p, z, s, n)))
-  | Eq (_, _) -> assert false
-  | Refl _ -> assert false
-  | J (_, _, _, _, _) -> assert false
+          Some (Ind (p, z, s, n)))
+  | Eq (t, u) -> (
+      let rt = red env t and ru = red env u in
+      match (rt, ru) with
+      | None, None -> None
+      | _, _ ->
+          let t = match rt with Some t -> t | _ -> t
+          and u = match ru with Some u -> u | _ -> u in
+          Some (Eq (t, u)))
+  | Refl t -> (
+      let t = red env t in
+      match t with Some t -> Some (Refl t) | None -> None)
+  | J (_, r, x, y, Refl z) when x = y && x = z -> Some (App (r, x))
+  | J (p, r, x, y, e) -> (
+      let rp = red env p
+      and rr = red env r
+      and rx = red env x
+      and ry = red env y
+      and re = red env e in
+      match (rp, rr, rx, ry, re) with
+      | None, None, None, None, None -> None
+      | _, _, _, _, _ ->
+          let p = match rp with Some p -> p | _ -> p
+          and r = match rr with Some r -> r | _ -> r
+          and x = match rx with Some x -> x | _ -> x
+          and y = match ry with Some y -> y | _ -> y
+          and e = match re with Some e -> e | _ -> e in
+          red env (J (p, r, x, y, e)))
 
 let rec normalize env t =
   match red env t with None -> t | Some s -> normalize env s
@@ -168,6 +196,10 @@ let rec alpha e f =
   | S n, S m -> alpha n m
   | Ind (p, z, s, n), Ind (p', z', s', n') ->
       alpha p p' && alpha z z' && alpha s s' && alpha n n'
+  | Eq (t, u), Eq (t', u') -> alpha t t' && alpha u u'
+  | Refl t, Refl t' -> alpha t t'
+  | J (p, r, x, y, g), J (p', r', x', y', g') ->
+      alpha p p' && alpha r r' && alpha x x' && alpha y y' && alpha g g'
   | _, _ -> false
 
 let conv env e f =
@@ -207,9 +239,28 @@ let rec infer env = function
             else raise Type_error
         | _ -> raise Type_error
       else raise Type_error
-  | Eq (_, _) -> assert false
-  | Refl _ -> assert false
-  | J (_, _, _, _, _) -> assert false
+  | Eq (t, u) ->
+      if conv env (infer env t) (infer env u) then Type else raise Type_error
+  | Refl t ->
+      let _ = infer env t in
+      Type
+  | J (p, r, x, y, e) -> (
+      match normalize env (infer env p) with
+      | Pi (z, a, Pi (z', b, Pi (_, q, Type))) ->
+          if
+            conv env a b
+            && conv
+                 ((z, (a, None)) :: (z', (a, None)) :: env)
+                 (Eq (Var z, Var z'))
+                 q
+            && conv env (infer env x) a
+            && conv env (infer env y) b
+            && conv env (infer env e) (Eq (x, y))
+            && conv env (infer env r)
+                 (Pi (z, a, App (App (App (p, Var z), Var z), Eq (Var z, Var z))))
+          then Type
+          else raise Type_error
+      | _ -> raise Type_error)
 
 let check env t a = if conv env (infer env t) a then () else raise Type_error
 
