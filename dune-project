@@ -5,11 +5,11 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github clemsys/INF551_TD4-dune))
 
-(authors "Author Name")
+(authors "Cl\195\169ment CHAPOT")
 
-(maintainers "Maintainer Name")
+(maintainers "Cl\195\169ment CHAPOT")
 
 (license LICENSE)
 
@@ -17,8 +17,8 @@
 
 (package
  (name TD4)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Ocaml implementation of a propositional prover")
+ (description "Ocaml implementation of a propositional prover")
  (depends ocaml dune)
  (tags
   (topics "to describe" your project)))
