@@ -1,2 +1,7 @@
+define pred = fun (x : Nat) -> (Ind (fun (n : Nat) -> Nat) Z (fun (n : Nat) -> fun (m : Nat) -> n) x)
+eval pred Z
+eval pred (S (S (S Z)))
+define add = fun (x : Nat) -> (Ind (fun (n : Nat) -> (Nat => Nat)) (fun (n : Nat) -> n) (fun (n : Nat) -> (fun (f : Nat => Nat) -> (fun (m : Nat) -> (S (f m))))) x)
+eval add (S (S (S Z))) (S (S Z))
 define Seq = fun (x : Nat) -> fun (y : Nat) -> fun (e : Eq x y) -> (J (fun (a : Nat) -> fun (b : Nat) -> fun (f : Eq a b) -> (Eq (S a) (S b))) (fun (c : Nat) -> (Refl (S c))) x y e)
 check Seq = Pi (x : Nat) -> Pi (y : Nat) -> Pi (e : Eq x y) -> Eq (S x) (S y)
