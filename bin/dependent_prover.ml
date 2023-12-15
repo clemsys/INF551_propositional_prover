@@ -243,7 +243,7 @@ let rec infer env = function
       if conv env (infer env t) (infer env u) then Type else raise Type_error
   | Refl t ->
       let _ = infer env t in
-      Type
+      Eq (t, t)
   | J (p, r, x, y, e) -> (
       match normalize env (infer env p) with
       | Pi (z, a, Pi (z', b, Pi (_, q, Type))) ->
@@ -258,7 +258,7 @@ let rec infer env = function
             && conv env (infer env e) (Eq (x, y))
             && conv env (infer env r)
                  (Pi (z, a, App (App (App (p, Var z), Var z), Eq (Var z, Var z))))
-          then Type
+          then normalize env (App (App (App (p, x), y), e))
           else raise Type_error
       | _ -> raise Type_error)
 
