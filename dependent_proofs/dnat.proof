@@ -5,3 +5,5 @@ define add = fun (x : Nat) -> (Ind (fun (n : Nat) -> (Nat => Nat)) (fun (n : Nat
 eval add (S (S (S Z))) (S (S Z))
 define Seq = fun (x : Nat) -> fun (y : Nat) -> fun (e : Eq x y) -> (J (fun (a : Nat) -> fun (b : Nat) -> fun (f : Eq a b) -> (Eq (S a) (S b))) (fun (c : Nat) -> (Refl (S c))) x y e)
 check Seq = Pi (x : Nat) -> Pi (y : Nat) -> Pi (e : Eq x y) -> Eq (S x) (S y)
+define zadd = fun (n : Nat) -> Refl (add Z n)
+check zadd = Pi (n : Nat) -> Eq (add Z n) n
