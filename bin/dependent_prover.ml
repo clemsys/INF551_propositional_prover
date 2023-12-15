@@ -21,10 +21,12 @@ let rec to_string = function
   | Abs (x, t, y) ->
       "(fun (" ^ x ^ " : " ^ to_string t ^ ") -> " ^ to_string y ^ ")"
   | Pi (x, a, b) -> "((" ^ x ^ " : " ^ to_string a ^ ") -> " ^ to_string b ^ ")"
-  | Nat -> assert false
-  | Z -> assert false
-  | S _ -> assert false
-  | Ind (_, _, _, _) -> assert false
+  | Nat -> "Nat"
+  | Z -> "Z"
+  | S n -> "(S " ^ to_string n ^ ")"
+  | Ind (p, z, s, n) ->
+      "Ind" ^ to_string p ^ " " ^ to_string z ^ " " ^ to_string s ^ " "
+      ^ to_string n ^ ")"
   | Eq (_, _) -> assert false
   | Refl _ -> assert false
   | J (_, _, _, _, _) -> assert false
@@ -47,10 +49,10 @@ let rec has_fv x = function
   | Pi (y, a, _) when y = x ->
       has_fv x a (* or false? would be odd as well if a contained x = y *)
   | Pi (_, a, b) -> has_fv x a || has_fv x b
-  | Nat -> assert false
-  | Z -> assert false
-  | S _ -> assert false
-  | Ind (_, _, _, _) -> assert false
+  | Nat -> false
+  | Z -> false
+  | S n -> has_fv x n
+  | Ind (p, z, s, n) -> has_fv x p || has_fv x z || has_fv x s || has_fv x n
   | Eq (_, _) -> assert false
   | Refl _ -> assert false
   | J (_, _, _, _, _) -> assert false
@@ -68,11 +70,11 @@ let rec subst x u = function
   | Pi (y, a, b) when y = x || has_fv y u ->
       let z = fresh_var () in
       Pi (z, subst x u (subst y (Var z) a), subst x u (subst y (Var z) b))
-  | Pi (y, a, b) -> Pi (y, subst x u a, subst y u b)
-  | Nat -> assert false
-  | Z -> assert false
-  | S _ -> assert false
-  | Ind (_, _, _, _) -> assert false
+  | Pi (y, a, b) -> Pi (y, subst x u a, subst x u b)
+  | Nat -> Nat
+  | Z -> Z
+  | S n -> S (subst x u n)
+  | Ind (p, i, h, n) -> Ind (subst x u p, subst x u i, subst x u h, subst x u n)
   | Eq (_, _) -> assert false
   | Refl _ -> assert false
   | J (_, _, _, _, _) -> assert false
@@ -86,33 +88,57 @@ let rec string_of_context = function
       ^ x ^ " : " ^ to_string a
       ^ match t with Some t -> " = " ^ to_string t | _ -> "")
 
-(* we assume here that expressions are well typed *)
+(* we assume here that expressions are well typed, this function may perform multiple reductions at once *)
 let rec red env = function
   | Type -> None
-  | Var v -> snd (List.assoc v env)
+  | Var v -> ( try snd (List.assoc v env) with Not_found -> None)
   | App (Abs (x, _, y), u) -> Some (subst x u y)
   | App (r, s) -> (
-      let rr = red env r and ss = red env s in
-      match (rr, ss) with
+      let rr = red env r and rs = red env s in
+      match (rr, rs) with
       | None, None -> None
-      | None, Some s -> Some (App (r, s))
-      | Some r, _ -> Some (App (r, s)))
+      | _, _ ->
+          let r = match rr with Some r -> r | _ -> r
+          and s = match rs with Some s -> s | _ -> s in
+          Some (App (r, s)))
   | Abs (x, t, y) -> (
       let rt = red env t and ry = red ((x, (t, None)) :: env) y in
       match (rt, ry) with
       | None, None -> None
-      | None, Some ry -> Some (Abs (x, t, ry))
-      | Some rt, _ -> Some (Abs (x, rt, y)))
+      | _, _ ->
+          let t = match rt with Some t -> t | _ -> t
+          and y = match ry with Some y -> y | _ -> y in
+          Some (Abs (x, t, y)))
   | Pi (x, t, s) -> (
-      let rt = red env t and rs = red ((x, (Type, Some t)) :: env) s in
+      let rt = red env t and rs = red ((x, (t, None)) :: env) s in
       match (rt, rs) with
       | None, None -> None
-      | None, Some rs -> Some (Pi (x, t, rs))
-      | Some rt, _ -> Some (Pi (x, rt, s)))
-  | Nat -> assert false
-  | Z -> assert false
-  | S _ -> assert false
-  | Ind (_, _, _, _) -> assert false
+      | _, _ ->
+          let t = match rt with Some t -> t | _ -> t
+          and s = match rs with Some s -> s | _ -> s in
+          Some (Pi (x, t, s)))
+  | Nat -> None
+  | Z -> None
+  | S n -> (
+      let r = red env n in
+      match r with Some r -> Some (S r) | None -> None)
+  | Ind (p, z, s, n) -> (
+      let rp = red env p
+      and rz = red env z
+      and rs = red env s
+      and rn = red env n in
+      match (rp, rz, rs, rn) with
+      | None, None, None, None -> (
+          match n with
+          | Z -> Some z
+          | S n -> Some (App (App (s, n), Ind (p, z, s, n)))
+          | _ -> None)
+      | _, _, _, _ ->
+          let p = match rp with Some p -> p | _ -> p
+          and z = match rz with Some z -> z | _ -> z
+          and s = match rs with Some s -> s | _ -> s
+          and n = match rn with Some n -> n | _ -> n in
+          red env (Ind (p, z, s, n)))
   | Eq (_, _) -> assert false
   | Refl _ -> assert false
   | J (_, _, _, _, _) -> assert false
@@ -120,30 +146,33 @@ let rec red env = function
 let rec normalize env t =
   match red env t with None -> t | Some s -> normalize env s
 
-let rec alpha env e f =
+let rec alpha e f =
   match (e, f) with
   | Type, Type -> true
   | Var v, Var w -> v = w
-  | App (f, g), App (f', g') -> alpha env f f' && alpha env g g'
-  | Abs (x, a, t), Abs (x', a', t') when x = x' ->
-      alpha env a a' && alpha env t t'
+  | App (f, g), App (f', g') -> alpha f f' && alpha g g'
+  | Abs (x, a, t), Abs (x', a', t') when x = x' -> alpha a a' && alpha t t'
   | Abs (x, a, t), Abs (x', a', t') ->
       let y = fresh_var () in
-      alpha env
+      alpha
         (Abs (y, subst x (Var y) a, subst x (Var y) t))
         (Abs (y, subst x' (Var y) a', subst x' (Var y) t'))
-  | Pi (x, a, b), Pi (x', a', b') when x = x' ->
-      alpha env a a' && alpha env b b'
+  | Pi (x, a, b), Pi (x', a', b') when x = x' -> alpha a a' && alpha b b'
   | Pi (x, a, b), Pi (x', a', b') ->
       let y = fresh_var () in
-      alpha env
+      alpha
         (Pi (y, subst x (Var y) a, subst x (Var y) b))
         (Pi (y, subst x' (Var y) a', subst x' (Var y) b'))
+  | Nat, Nat -> true
+  | Z, Z -> true
+  | S n, S m -> alpha n m
+  | Ind (p, z, s, n), Ind (p', z', s', n') ->
+      alpha p p' && alpha z z' && alpha s s' && alpha n n'
   | _, _ -> false
 
 let conv env e f =
   let ne = normalize env e and nf = normalize env f in
-  alpha env ne nf
+  alpha ne nf
 
 exception Type_error
 exception Unbound_variable of var
@@ -155,21 +184,34 @@ let rec infer env = function
   | App (t, u) -> (
       match infer env t with
       | Pi (x, a, b) ->
-          if infer env u <> a then raise Type_error else subst x u b
+          let type_u = infer env u in
+          if conv env a type_u then subst x u b else raise Type_error
       | _ -> raise Type_error)
   | Abs (x, a, t) ->
       let b = infer ((x, (a, None)) :: env) t in
       Pi (x, a, b)
   | Pi (_, _, _) -> Type
-  | Nat -> assert false
-  | Z -> assert false
-  | S _ -> assert false
-  | Ind (_, _, _, _) -> assert false
+  | Nat -> Type
+  | Z -> Nat
+  | S n -> if conv env (infer env n) Nat then Nat else raise Type_error
+  | Ind (p, z, s, n) ->
+      let type_i = infer env z and type_n = infer env n in
+      print_endline (to_string (normalize env (App (p, S n))));
+      print_endline (to_string (normalize env (App (App (s, n), App (p, n)))));
+      print_endline (string_of_context env);
+      if
+        conv env type_i (App (p, Z))
+        && conv env type_n Nat
+        && conv env
+             (App (p, S n))
+             (infer env (normalize env (App (App (s, n), App (p, n)))))
+      then normalize env (App (p, n))
+      else raise Type_error
   | Eq (_, _) -> assert false
   | Refl _ -> assert false
   | J (_, _, _, _, _) -> assert false
 
-let check env t a = if infer env t <> a then raise Type_error else ()
+let check env t a = if conv env (infer env t) a then () else raise Type_error
 
 (***********************************)
 (* Code copied from interaction.ml *)
@@ -356,6 +398,5 @@ let () =
     with
     | End_of_file -> loop := false
     | Failure err -> print_endline ("Error: " ^ err ^ ".")
-    (* | e -> print_endline ("Error: "^Printexc.to_string e) *)
   done;
   print_endline "Bye."
