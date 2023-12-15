@@ -1,3 +1,5 @@
+(* Clément CHAPOT *)
+
 (* PART 1 *)
 
 type tvar = string

@@ -1,3 +1,5 @@
+(* Clément CHAPOT *)
+
 type var = string
 
 type expr =
