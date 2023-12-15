@@ -196,16 +196,16 @@ let rec infer env = function
   | S n -> if conv env (infer env n) Nat then Nat else raise Type_error
   | Ind (p, z, s, n) ->
       let type_i = infer env z and type_n = infer env n in
-      print_endline (to_string (normalize env (App (p, S n))));
-      print_endline (to_string (normalize env (App (App (s, n), App (p, n)))));
-      print_endline (string_of_context env);
-      if
-        conv env type_i (App (p, Z))
-        && conv env type_n Nat
-        && conv env
-             (App (p, S n))
-             (infer env (normalize env (App (App (s, n), App (p, n)))))
-      then normalize env (App (p, n))
+      if conv env type_i (App (p, Z)) && conv env type_n Nat then
+        match normalize env (infer env s) with
+        | Pi (m, Nat, Pi (_, q, r)) ->
+            let new_env = (m, (Nat, None)) :: env in
+            if
+              conv new_env (App (p, Var m)) q
+              && conv new_env (App (p, S (Var m))) r
+            then normalize env (App (p, n))
+            else raise Type_error
+        | _ -> raise Type_error
       else raise Type_error
   | Eq (_, _) -> assert false
   | Refl _ -> assert false
