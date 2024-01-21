@@ -11,5 +11,5 @@ To run the dependent_prover, run `dune exec dependent_prover`
 To verify a (basic) proof, run `cat proofs/{filename} | dune exec prover /dev/null` \
 To verify a dependent proof, run `cat dependent_proofs/{filename} | dune exec prover`
 
-Proofs made using prover.ml are located in proofs/ \
-Proofs made using dependent_prover.ml are located in dependent_proofs/
+Proofs made using prover.ml are located in `proofs/` \
+Proofs made using dependent_prover.ml are located in `dependent_proofs/`
